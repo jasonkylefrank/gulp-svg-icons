@@ -37,7 +37,7 @@ var Icons = function(dir, options) {
 
 	this.dir = dir;
 	this.settings = settings;
-	this.prefix = settings.prefix.constructor === String 
+	this.prefix = settings.prefix.constructor === String
 		? function(name) {
 
 			return settings.prefix + '-' + name;
@@ -53,8 +53,8 @@ var Icons = function(dir, options) {
 Icons.prototype._init = function(name) {
 
 	var self = this;
-	self._icons = '';
-	self._collected = [];
+	self._icons = ''; // All of the svg <symbol> elements, as a string, so it can be inserted between <svg> and </svg>
+	self._collected = []; // list of svgs which have been collected into the _icons string
 
 	if (!self.settings.injectOnlyUsedIcons) {
 
@@ -67,17 +67,23 @@ Icons.prototype._init = function(name) {
 
 Icons.prototype._collect = function(name) {
 
-	if (this._collected.indexOf(name) < 0) {
-
-		var raw = String(fs.readFileSync(path.join(this.dir, name + '.svg')));
-
+	var hasBeenCollected = (this._collected.indexOf(name) >= 0);
+	// If we haven't collected this one yet, then do it now.
+	if (!hasBeenCollected) {
+		// get the svg file contents, reading it in synchronously ('Sync')
+		var srcSVGStr = String(fs.readFileSync(path.join(this.dir, name + '.svg')));
+		// Create a new <symbol> element, setting its viewBox attribute to what was specified in
+		//  the source svg file, and setting its contents to be the source svg's contents (the content is between its <svg> and </svg>)
+		// The new <symbol> element is added to the string of other <symbol>s.
 		this._icons += [
 			'<symbol id="',
 			 this.prefix(name),
 			 '" ',
-			 /\s(viewBox="[0-9\-\s\.]+")/.exec(raw)[1],
+			 // extract viewBox attribute from the source svg and put it on this <symbol>
+			 /\s(viewBox="[0-9\-\s\.]+")/.exec(srcSVGStr)[1], // This blows up if there is no viewBox in the source svg file
 			 '>',
-			 /<svg[^>]*>([\s\S]*?)<\/svg>/gi.exec(raw)[1],
+			 // extract the source svg's content and set it as the content of this <symbol>
+			 /<svg[^>]*>([\s\S]*?)<\/svg>/gi.exec(srcSVGStr)[1],
 			 '</symbol>'
 		 ].join('');
 
